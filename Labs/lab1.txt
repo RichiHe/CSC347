@@ -1,0 +1,137 @@
+Everything in this lab takes place inside the RH72 VM.
+
+Q1) Compile and gdb stack.c. Put a breakpoint at sum=0; and run the code.
+
+	gcc -o stack -g stack.c
+	gdb stack
+	break 86
+	run
+
+Q2) What's the difference between gdb commands step and stepi?
+
+	Step command will execute a line of source code and use 
+	Stepi command will step into the next machine instruction
+
+Q3) For the sumNums function call.
+
+    Which local variables on the stack are initialized?
+
+	n, m
+
+    Which local variables on the stack are not initialized?
+
+	i, c, num
+
+    Where did those values come from?
+
+	values are from main when the sumNum is called.
+
+    Why is this a potential issue for a C program?
+	the order of variables in stack are not the same with it in the code.
+	
+
+Q4) Step through the code until you reach return sum;
+    Do this by ...
+step
+x/24w $esp
+step
+x/24w $esp
+step
+x/24w $esp
+step
+x/24w $esp
+...
+
+    Draw a picture of the stack, right before you leave sumNums (before return sum; is executed).
+    It should be similar to the picture in stack.c, with the addresses and values modified to correspond
+    with the execution of your code.
+
+  esp-> 0xbffffc40:  80    fc    ff    bf       these are c
+ 	0xbffffc44:  b6    d2    00    40       these are c
+	0xbffffc48:  9c    95    04    08       these are c
+	0xbffffc4c:  45    82    04    08       these are c
+	0xbffffc50:  64    32    03    40
+	0xbffffc54:  54    d1    15    40
+	0xbffffc58:  12    00    00    00       these are sum
+	0xbffffc5c:  07    00    00    00       these are i
+	0xbffffc60:  98    fc    ff    bf       these are i
+	0xbffffc64:  50    d4    00    40
+  ebp-> 0xbffffc68:  88    fc    ff    bf
+        0xbffffc6c:  ca    84    04    08
+	0xbffffc70:  03    00    00    00
+	0xbffffc74:  07    00    00    00
+	0xbffffc78:  98    fc    ff    bf
+	0xbffffc7c:  41    84    04    08
+        0xbffffc80:  7c    95    04    08
+	0xbffffc84:  80    96    04    08
+	0xbffffc88:  c8    fc    ff    bf
+	0xbffffc8c:  07    35    04    40
+	0xbffffc90:  01    00    00    00
+	0xbffffc94:  f4    fc    ff    bf
+	0xbffffc98:  fc    fc    ff    bf
+	0xbffffc9c:  fa    82    04    08
+
+
+Q5) Fix the code below so that, when executed, hacked is run upon return
+    from sumNums.
+
+int sumNums(int n, int m){
+	int i;
+	int sum=0;
+	char c[16];
+	i=n;
+	while(i<m){
+		sum=sum+i;
+		i=i+1;
+	}
+	c[44]=0xa0;
+	c[45]=0x84;
+	c[46]=0x04;
+	c[47]=0x08;
+	return sum;
+}
+
+Q6) Which part of stack.c does the following bit of stack.s
+    correspond to? Explain the correspondence line by line...
+
+-----------------------------------------------------------
+EXTRACT FROM stack.s
+-----------------------------------------------------------
+sumNums:                                     PLACE LINES OF stack.c BELOW
+     ...		while part
+.L3:	
+	movl	-12(%ebp), %eax     while(i<m)    
+	cmpl	12(%ebp), %eax		...
+	jl	.L5			...
+	jmp	.L4                     ...
+	.p2align 2                      ...
+.L5:
+	movl	-12(%ebp), %eax     sum=sum+i
+	leal	-16(%ebp), %edx	        ...
+	addl	%eax, (%edx)		...
+	leal	-12(%ebp), %eax	      i=i+1
+	incl	(%eax)			...
+	jmp	.L3
+     ...
+
+-----------------------------------------------------------
+EXTRACT FROM stack.c
+-----------------------------------------------------------
+int sumNums(int n, int m){
+	int i;
+	int sum=0;
+	char c[16];
+	i=n;
+	while(i<m){
+		sum=sum+i;
+		i=i+1;
+	}
+	return sum;
+}
+
+Q7) When you compile and run your modified version of the code on a lab machine in DH2020,
+why does it not result in the same behaviour (i.e., why does it not call the function hacked())?
+Assuming you are not root and cannot change any system settings, but you have access to the build commands,
+ what would you have to do to produce a vulnerable executable?
+	The environment is different.
+ 
